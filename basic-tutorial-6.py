@@ -2,7 +2,8 @@
 
 import sys
 import gi
-gi.require_version('Gst', '1.0')
+
+gi.require_version("Gst", "1.0")
 from gi.repository import Gst, GLib
 
 # http://docs.gstreamer.com/display/GstSDK/Basic+tutorial+6%3A+Media+formats+and+Pad+Capabilities
@@ -12,8 +13,7 @@ from gi.repository import Gst, GLib
 
 def print_field(field, value, pfx):
     str = Gst.value_serialize(value)
-    print("{0:s}  {1:15s}: {2:s}".format(
-        pfx, GLib.quark_to_string(field), str))
+    print("{0:s}  {1:15s}: {2:s}".format(pfx, GLib.quark_to_string(field), str))
     return True
 
 
@@ -33,6 +33,7 @@ def print_caps(caps, pfx):
         structure = caps.get_structure(i)
         print("{0:s}{1:s}".format(pfx, structure.get_name()))
         structure.foreach(print_field, pfx)
+
 
 # prints information about a pad template (including its capabilities)
 
@@ -68,6 +69,7 @@ def print_pad_templates_information(factory):
             print_caps(padtemplate.get_caps(), "      ")
 
         print("")
+
 
 # shows the current capabilities of the requested pad in the given element
 
@@ -116,7 +118,8 @@ def main():
         return -1
 
     # build the pipeline
-    pipeline.add(source, sink)
+    pipeline.add(source)
+    pipeline.add(sink)
     if not source.link(sink):
         print("ERROR: Could not link source to sink")
         return -1
@@ -137,7 +140,10 @@ def main():
         try:
             msg = bus.timed_pop_filtered(
                 0.5 * Gst.SECOND,
-                Gst.MessageType.ERROR | Gst.MessageType.EOS | Gst.MessageType.STATE_CHANGED)
+                Gst.MessageType.ERROR
+                | Gst.MessageType.EOS
+                | Gst.MessageType.STATE_CHANGED,
+            )
 
             if msg:
                 t = msg.type
@@ -160,7 +166,8 @@ def main():
                             Gst.Element.state_get_name(old),
                             "to",
                             Gst.Element.state_get_name(new),
-                            ":")
+                            ":",
+                        )
 
                         # print the current capabilities of the sink
                         print_pad_capabilities(sink, "sink")
@@ -175,5 +182,6 @@ def main():
 
     pipeline.set_state(Gst.State.NULL)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

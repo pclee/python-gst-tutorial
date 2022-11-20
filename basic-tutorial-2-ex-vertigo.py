@@ -4,8 +4,11 @@
 
 import sys
 import gi
-gi.require_version('Gst', '1.0')
+
+gi.require_version("Gst", "1.0")
 from gi.repository import Gst, GLib, GObject
+
+from helper import bus_call
 
 # initialize GStreamer
 Gst.init(None)
@@ -24,7 +27,10 @@ if not pipeline or not source or not filter_vertigo or not videoconvert or not s
     sys.exit(1)
 
 # build the pipeline
-pipeline.add(source, filter_vertigo, videoconvert, sink)
+pipeline.add(source)
+pipeline.add(filter_vertigo)
+pipeline.add(videoconvert)
+pipeline.add(sink)
 if not source.link(filter_vertigo):
     print("ERROR: Could not link source to filter-vertigo")
     sys.exit(1)
@@ -40,6 +46,8 @@ if not videoconvert.link(sink):
 # modify the source's properties
 source.set_property("pattern", 0)
 
+loop = GLib.MainLoop()
+
 # start playing
 ret = pipeline.set_state(Gst.State.PLAYING)
 if ret == Gst.StateChangeReturn.FAILURE:
@@ -47,22 +55,12 @@ if ret == Gst.StateChangeReturn.FAILURE:
 
 # wait for EOS or error
 bus = pipeline.get_bus()
-msg = bus.timed_pop_filtered(
-    Gst.CLOCK_TIME_NONE,
-    Gst.MessageType.ERROR | Gst.MessageType.EOS
-)
+bus.add_signal_watch()
+bus.connect("message", bus_call, loop)
 
-if msg:
-    t = msg.type
-    if t == Gst.MessageType.ERROR:
-        err, dbg = msg.parse_error()
-        print("ERROR:", msg.src.get_name(), ":", err.message)
-        if dbg:
-            print("debugging info:", dbg)
-    elif t == Gst.MessageType.EOS:
-        print("End-Of-Stream reached")
-    else:
-        # this should not happen. we only asked for ERROR and EOS
-        print("ERROR: Unexpected message received.")
+try:
+    loop.run()
+except:
+    pass
 
 pipeline.set_state(Gst.State.NULL)

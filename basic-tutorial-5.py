@@ -2,17 +2,17 @@
 
 import sys
 import gi
-gi.require_version('Gst', '1.0')
-gi.require_version('Gtk', '3.0')
-gi.require_version('GdkX11', '3.0')
-gi.require_version('GstVideo', '1.0')
+
+gi.require_version("Gst", "1.0")
+gi.require_version("Gtk", "3.0")
+gi.require_version("GdkX11", "3.0")
+gi.require_version("GstVideo", "1.0")
 from gi.repository import Gst, Gtk, GLib, GdkX11, GstVideo
 
 # http://docs.gstreamer.com/display/GstSDK/Basic+tutorial+5%3A+GUI+toolkit+integration
 
 
 class Player(object):
-
     def __init__(self):
         # initialize GTK
         Gtk.init(sys.argv)
@@ -29,7 +29,9 @@ class Player(object):
 
         # set up URI
         self.playbin.set_property(
-            "uri", "http://docs.gstreamer.com/media/sintel_trailer-480p.webm")
+            "uri",
+            "https://www.freedesktop.org/software/gstreamer-sdk/data/media/sintel_trailer-480p.webm",
+        )
 
         # connect to interesting signals in playbin
         self.playbin.connect("video-tags-changed", self.on_tags_changed)
@@ -78,38 +80,40 @@ class Player(object):
         main_window.connect("delete-event", self.on_delete_event)
 
         video_window = Gtk.DrawingArea.new()
-        video_window.set_double_buffered(False)
+        # video_window.set_double_buffered(False)
         video_window.connect("realize", self.on_realize)
         video_window.connect("draw", self.on_draw)
 
-        play_button = Gtk.Button.new_from_stock(Gtk.STOCK_MEDIA_PLAY)
+        play_button = Gtk.Button.new_with_label("Play")
         play_button.connect("clicked", self.on_play)
 
-        pause_button = Gtk.Button.new_from_stock(Gtk.STOCK_MEDIA_PAUSE)
+        pause_button = Gtk.Button.new_with_label("Pause")
         pause_button.connect("clicked", self.on_pause)
 
-        stop_button = Gtk.Button.new_from_stock(Gtk.STOCK_MEDIA_STOP)
+        stop_button = Gtk.Button.new_with_label("Stop")
         stop_button.connect("clicked", self.on_stop)
 
-        self.slider = Gtk.HScale.new_with_range(0, 100, 1)
+        self.slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
         self.slider.set_draw_value(False)
         self.slider_update_signal_id = self.slider.connect(
-            "value-changed", self.on_slider_changed)
+            "value-changed", self.on_slider_changed
+        )
 
         self.streams_list = Gtk.TextView.new()
         self.streams_list.set_editable(False)
 
-        controls = Gtk.HBox.new(False, 0)
+        controls = Gtk.Box.new(False, 0)
         controls.pack_start(play_button, False, False, 2)
         controls.pack_start(pause_button, False, False, 2)
         controls.pack_start(stop_button, False, False, 2)
         controls.pack_start(self.slider, True, True, 0)
 
-        main_hbox = Gtk.HBox.new(False, 0)
+        main_hbox = Gtk.Box.new(False, 0)
         main_hbox.pack_start(video_window, True, True, 0)
         main_hbox.pack_start(self.streams_list, False, False, 2)
 
-        main_box = Gtk.VBox.new(False, 0)
+        # main_box = Gtk.VBox.new(False, 0)
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
         main_box.pack_start(main_hbox, True, True, 0)
         main_box.pack_start(controls, False, False, 0)
 
@@ -168,9 +172,11 @@ class Player(object):
     # we perform a seek to the new position here
     def on_slider_changed(self, range):
         value = self.slider.get_value()
-        self.playbin.seek_simple(Gst.Format.TIME,
-                                 Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT,
-                                 value * Gst.SECOND)
+        self.playbin.seek_simple(
+            Gst.Format.TIME,
+            Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT,
+            value * Gst.SECOND,
+        )
 
     # this function is called periodically to refresh the GUI
     def refresh_ui(self):
@@ -212,8 +218,9 @@ class Player(object):
         # the main thread of this event through a message in the bus
         self.playbin.post_message(
             Gst.Message.new_application(
-                self.playbin,
-                Gst.Structure.new_empty("tags-changed")))
+                self.playbin, Gst.Structure.new_empty("tags-changed")
+            )
+        )
 
     # this function is called when an error message is posted on the bus
     def on_error(self, bus, msg):
@@ -237,8 +244,11 @@ class Player(object):
             return
 
         self.state = new
-        print("State changed from {0} to {1}".format(
-            Gst.Element.state_get_name(old), Gst.Element.state_get_name(new)))
+        print(
+            "State changed from {0} to {1}".format(
+                Gst.Element.state_get_name(old), Gst.Element.state_get_name(new)
+            )
+        )
 
         if old == Gst.State.READY and new == Gst.State.PAUSED:
             # for extra responsiveness we refresh the GUI as soons as
@@ -264,9 +274,7 @@ class Player(object):
             if tags:
                 buffer.insert_at_cursor("video stream {0}\n".format(i))
                 _, str = tags.get_string(Gst.TAG_VIDEO_CODEC)
-                buffer.insert_at_cursor(
-                    "  codec: {0}\n".format(
-                        str or "unknown"))
+                buffer.insert_at_cursor("  codec: {0}\n".format(str or "unknown"))
 
         for i in range(nr_audio):
             tags = None
@@ -276,21 +284,17 @@ class Player(object):
                 buffer.insert_at_cursor("\naudio stream {0}\n".format(i))
                 ret, str = tags.get_string(Gst.TAG_AUDIO_CODEC)
                 if ret:
-                    buffer.insert_at_cursor(
-                        "  codec: {0}\n".format(
-                            str or "unknown"))
+                    buffer.insert_at_cursor("  codec: {0}\n".format(str or "unknown"))
 
                 ret, str = tags.get_string(Gst.TAG_LANGUAGE_CODE)
                 if ret:
                     buffer.insert_at_cursor(
-                        "  language: {0}\n".format(
-                            str or "unknown"))
+                        "  language: {0}\n".format(str or "unknown")
+                    )
 
                 ret, str = tags.get_uint(Gst.TAG_BITRATE)
                 if ret:
-                    buffer.insert_at_cursor(
-                        "  bitrate: {0}\n".format(
-                            str or "unknown"))
+                    buffer.insert_at_cursor("  bitrate: {0}\n".format(str or "unknown"))
 
         for i in range(nr_text):
             tags = None
@@ -301,8 +305,8 @@ class Player(object):
                 ret, str = tags.get_string(Gst.TAG_LANGUAGE_CODE)
                 if ret:
                     buffer.insert_at_cursor(
-                        "  language: {0}\n".format(
-                            str or "unknown"))
+                        "  language: {0}\n".format(str or "unknown")
+                    )
 
     # this function is called when an "application" message is posted on the bus
     # here we retrieve the message posted by the on_tags_changed callback
@@ -312,6 +316,7 @@ class Player(object):
             # the GUI
             self.analyze_streams()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     p = Player()
     p.start()

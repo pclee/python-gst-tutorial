@@ -2,7 +2,8 @@
 
 import sys
 import gi
-gi.require_version('Gst', '1.0')
+
+gi.require_version("Gst", "1.0")
 from gi.repository import Gst
 
 # http://docs.gstreamer.com/display/GstSDK/Basic+tutorial+7%3A+Multithreading+and+Pad+Availability
@@ -27,29 +28,46 @@ def main():
     # create the empty pipeline
     pipeline = Gst.Pipeline.new("test-pipeline")
 
-    if (not pipeline or not audio_source or not tee or not audio_queue
-            or not audio_convert or not audio_resample or not audio_sink
-            or not video_queue or not visual or not video_convert
-            or not video_sink):
+    if (
+        not pipeline
+        or not audio_source
+        or not tee
+        or not audio_queue
+        or not audio_convert
+        or not audio_resample
+        or not audio_sink
+        or not video_queue
+        # or not visual
+        or not video_convert
+        or not video_sink
+    ):
         print("ERROR: Not all elements could be created.")
         sys.exit(1)
 
     # configure elements
     audio_source.set_property("freq", 215.0)
-    visual.set_property("shader", 0)
-    visual.set_property("style", 1)
+    # visual.set_property("shader", 0)
+    # visual.set_property("style", 1)
 
     # link all elements that can be automatically linked because they have
     # always pads
-    pipeline.add(audio_source, tee, audio_queue, audio_convert, audio_resample,
-                 audio_sink, video_queue, visual, video_convert, video_sink)
+    pipeline.add(audio_source)
+    pipeline.add(tee)
+    pipeline.add(audio_queue)
+    pipeline.add(audio_convert)
+    pipeline.add(audio_resample)
+    pipeline.add(audio_sink)
+    pipeline.add(video_queue)
+    # pipeline.add(visual)
+    pipeline.add(video_convert)
+    pipeline.add(video_sink)
 
     ret = audio_source.link(tee)
     ret = ret and audio_queue.link(audio_convert)
     ret = ret and audio_convert.link(audio_resample)
     ret = ret and audio_resample.link(audio_sink)
-    ret = ret and video_queue.link(visual)
-    ret = ret and visual.link(video_convert)
+    # ret = ret and video_queue.link(visual)
+    # ret = ret and visual.link(video_convert)
     ret = ret and video_convert.link(video_sink)
 
     if not ret:
@@ -59,18 +77,16 @@ def main():
     # manually link the tee, which has "Request" pads
     tee_src_pad_template = tee.get_pad_template("src_%u")
     tee_audio_pad = tee.request_pad(tee_src_pad_template, None, None)
-    print(
-        "Obtained request pad {0} for audio branch".format(
-            tee_audio_pad.get_name()))
+    print("Obtained request pad {0} for audio branch".format(tee_audio_pad.get_name()))
     audio_queue_pad = audio_queue.get_static_pad("sink")
     tee_video_pad = tee.request_pad(tee_src_pad_template, None, None)
-    print(
-        "Obtained request pad {0} for video branch".format(
-            tee_video_pad.get_name()))
+    print("Obtained request pad {0} for video branch".format(tee_video_pad.get_name()))
     video_queue_pad = video_queue.get_static_pad("sink")
 
-    if (tee_audio_pad.link(audio_queue_pad) != Gst.PadLinkReturn.OK
-            or tee_video_pad.link(video_queue_pad) != Gst.PadLinkReturn.OK):
+    if (
+        tee_audio_pad.link(audio_queue_pad) != Gst.PadLinkReturn.OK
+        or tee_video_pad.link(video_queue_pad) != Gst.PadLinkReturn.OK
+    ):
         print("ERROR: Tee could not be linked")
         sys.exit(1)
 
@@ -89,8 +105,8 @@ def main():
     while True:
         try:
             msg = bus.timed_pop_filtered(
-                0.5 * Gst.SECOND,
-                Gst.MessageType.ERROR | Gst.MessageType.EOS)
+                0.5 * Gst.SECOND, Gst.MessageType.ERROR | Gst.MessageType.EOS
+            )
             if msg:
                 terminate = True
         except KeyboardInterrupt:
@@ -101,5 +117,6 @@ def main():
 
     pipeline.set_state(Gst.State.NULL)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

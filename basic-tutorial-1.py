@@ -2,31 +2,49 @@
 
 # http://docs.gstreamer.com/pages/viewpage.action?pageId=327735
 
+import sys
 import gi
-gi.require_version('Gst', '1.0')
+
+gi.require_version("Gst", "1.0")
 from gi.repository import Gst, GObject, GLib
 
-pipeline = None
-bus = None
-message = None
+from helper import bus_call
 
-# initialize GStreamer
-Gst.init(None)
 
-# build the pipeline
-pipeline = Gst.parse_launch(
-    "playbin uri=http://docs.gstreamer.com/media/sintel_trailer-480p.webm"
-)
+def main():
 
-# start playing
-pipeline.set_state(Gst.State.PLAYING)
+    # initialize GStreamer
+    Gst.init(None)
 
-# wait until EOS or error
-bus = pipeline.get_bus()
-msg = bus.timed_pop_filtered(
-    Gst.CLOCK_TIME_NONE,
-    Gst.MessageType.ERROR | Gst.MessageType.EOS
-)
+    playbin = Gst.ElementFactory.make("playbin", None)
+    if not playbin:
+        sys.stderr.write("'playbin' gstreamer plugin missing\n")
+        sys.exit(1)
 
-# free resources
-pipeline.set_state(Gst.State.NULL)
+    uri = Gst.filename_to_uri(
+        "/home/peter/study/gstreamer/bbb_sunflower_1080p_60fps_normal.mp4"
+    )
+    playbin.set_property("uri", uri)
+
+    # create an event loop and feed gstreamer bus messages to it
+    loop = GLib.MainLoop()
+
+    # wait until EOS or error
+    bus = playbin.get_bus()
+    bus.add_signal_watch()
+    bus.connect("message", bus_call, loop)
+
+    # start playing and listen to events
+    playbin.set_state(Gst.State.PLAYING)
+
+    try:
+        loop.run()
+    except:
+        pass
+
+    # free resources
+    playbin.set_state(Gst.State.NULL)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

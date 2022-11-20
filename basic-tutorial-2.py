@@ -4,55 +4,71 @@
 
 import sys
 import gi
-gi.require_version('Gst', '1.0')
+
+gi.require_version("Gst", "1.0")
 from gi.repository import Gst, GLib, GObject
 
-# initialize GStreamer
-Gst.init(None)
 
-# create the elements
-source = Gst.ElementFactory.make("videotestsrc", "source")
-sink = Gst.ElementFactory.make("autovideosink", "sink")
+def bus_call(bus, message, loop):
+    t = message.type
+    if t == Gst.MessageType.EOS:
+        sys.stdout.write("End-of-stream\n")
+        loop.quit()
+    elif t == Gst.MessageType.ERROR:
+        err, debug = message.parse_error()
+        sys.stderr.write("Error: %s: %s\n" % (err, debug))
+        loop.quit()
+    return True
 
-# create the empty pipeline
-pipeline = Gst.Pipeline.new("test-pipeline")
 
-if not pipeline or not source or not sink:
-    print("ERROR: Not all elements could be created")
-    sys.exit(1)
+def main(args):
+    # initialize GStreamer
+    Gst.init(None)
 
-# build the pipeline
-pipeline.add(source, sink)
-if not source.link(sink):
-    print("ERROR: Could not link source to sink")
-    sys.exit(1)
+    # create the elements
+    source = Gst.ElementFactory.make("videotestsrc", "source")
+    sink = Gst.ElementFactory.make("autovideosink", "sink")
 
-# modify the source's properties
-source.set_property("pattern", 0)
+    # create the empty pipeline
+    pipeline = Gst.Pipeline.new("test-pipeline")
 
-# start playing
-ret = pipeline.set_state(Gst.State.PLAYING)
-if ret == Gst.StateChangeReturn.FAILURE:
-    print("ERROR: Unable to set the pipeline to the playing state")
+    if not pipeline or not source or not sink:
+        print("ERROR: Not all elements could be created")
+        sys.exit(1)
 
-# wait for EOS or error
-bus = pipeline.get_bus()
-msg = bus.timed_pop_filtered(
-    Gst.CLOCK_TIME_NONE,
-    Gst.MessageType.ERROR | Gst.MessageType.EOS
-)
+    # build the pipeline
+    pipeline.add(source)
+    pipeline.add(sink)
+    if not source.link(sink):
+        print("ERROR: Could not link source to sink")
+        sys.exit(1)
 
-if msg:
-    t = msg.type
-    if t == Gst.MessageType.ERROR:
-        err, dbg = msg.parse_error()
-        print("ERROR:", msg.src.get_name(), " ", err.message)
-        if dbg:
-            print("debugging info:", dbg)
-    elif t == Gst.MessageType.EOS:
-        print("End-Of-Stream reached")
-    else:
-        # this should not happen. we only asked for ERROR and EOS
-        print("ERROR: Unexpected message received.")
+    # modify the source's properties
+    source.set_property("pattern", 0)
 
-pipeline.set_state(Gst.State.NULL)
+    loop = GLib.MainLoop()
+
+    # start playing
+    ret = pipeline.set_state(Gst.State.PLAYING)
+    if ret == Gst.StateChangeReturn.FAILURE:
+        print("ERROR: Unable to set the pipeline to the playing state")
+
+    # wait for EOS or error
+    bus = pipeline.get_bus()
+    # msg = bus.timed_pop_filtered(
+    #     Gst.CLOCK_TIME_NONE, Gst.MessageType.ERROR | Gst.MessageType.EOS
+    # )
+    bus.add_signal_watch()
+    bus.connect("message", bus_call, loop)
+
+    try:
+        loop.run()
+    except:
+        pass
+
+    # cleanup
+    pipeline.set_state(Gst.State.NULL)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

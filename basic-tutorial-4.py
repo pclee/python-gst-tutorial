@@ -2,7 +2,8 @@
 
 import sys
 import gi
-gi.require_version('Gst', '1.0')
+
+gi.require_version("Gst", "1.0")
 from gi.repository import Gst
 
 from helper import format_ns
@@ -11,7 +12,6 @@ from helper import format_ns
 
 
 class Player(object):
-
     def __init__(self):
         # are we playing?
         self.playing = False
@@ -35,7 +35,9 @@ class Player(object):
 
         # set the uri to play
         self.playbin.set_property(
-            "uri", "http://docs.gstreamer.com/media/sintel_trailer-480p.webm")
+            "uri",
+            "https://www.freedesktop.org/software/gstreamer-sdk/data/media/sintel_trailer-480p.webm",
+        )
 
     def play(self):
         # dont start again if we are already playing
@@ -54,8 +56,12 @@ class Player(object):
             while True:
                 msg = bus.timed_pop_filtered(
                     100 * Gst.MSECOND,
-                    (Gst.MessageType.STATE_CHANGED | Gst.MessageType.ERROR
-                        | Gst.MessageType.EOS | Gst.MessageType.DURATION_CHANGED)
+                    (
+                        Gst.MessageType.STATE_CHANGED
+                        | Gst.MessageType.ERROR
+                        | Gst.MessageType.EOS
+                        | Gst.MessageType.DURATION_CHANGED
+                    ),
                 )
 
                 # parse message
@@ -66,28 +72,38 @@ class Player(object):
                     if self.playing:
                         current = -1
                         # query the current position of the stream
-                        ret, current = self.playbin.query_position(
-                            Gst.Format.TIME)
+                        ret, current = self.playbin.query_position(Gst.Format.TIME)
                         if not ret:
                             print("ERROR: Could not query current position")
 
                         # if we don't know it yet, query the stream duration
                         if self.duration == Gst.CLOCK_TIME_NONE:
                             (ret, self.duration) = self.playbin.query_duration(
-                                Gst.Format.TIME)
+                                Gst.Format.TIME
+                            )
                             if not ret:
                                 print("ERROR: Could not query stream duration")
 
                         # print current position and total duration
                         print(
-                            "Position {0} / {1}".format(format_ns(current), format_ns(self.duration)))
+                            "Position {0} / {1}".format(
+                                format_ns(current), format_ns(self.duration)
+                            )
+                        )
 
                         # if seeking is enabled, we have not done it yet and the time is right,
                         # seek
-                        if self.seek_enabled and not self.seek_done and current > 10 * Gst.SECOND:
+                        if (
+                            self.seek_enabled
+                            and not self.seek_done
+                            and current > 10 * Gst.SECOND
+                        ):
                             print("Reached 10s, performing seek...")
                             self.playbin.seek_simple(
-                                Gst.Format.TIME, Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT, 30 * Gst.SECOND)
+                                Gst.Format.TIME,
+                                Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT,
+                                30 * Gst.SECOND,
+                            )
 
                             self.seek_done = True
                 if self.terminate:
@@ -112,9 +128,12 @@ class Player(object):
         elif t == Gst.MessageType.STATE_CHANGED:
             old_state, new_state, pending_state = msg.parse_state_changed()
             if msg.src == self.playbin:
-                print("Pipeline state changed from '{0:s}' to '{1:s}'".format(
-                    Gst.Element.state_get_name(old_state),
-                    Gst.Element.state_get_name(new_state)))
+                print(
+                    "Pipeline state changed from '{0:s}' to '{1:s}'".format(
+                        Gst.Element.state_get_name(old_state),
+                        Gst.Element.state_get_name(new_state),
+                    )
+                )
 
                 # remember whether we are in the playing state or not
                 self.playing = new_state == Gst.State.PLAYING
@@ -128,7 +147,9 @@ class Player(object):
                         if self.seek_enabled:
                             print(
                                 "Seeking is ENABLED (from {0} to {1})".format(
-                                    format_ns(start), format_ns(end)))
+                                    format_ns(start), format_ns(end)
+                                )
+                            )
                         else:
                             print("Seeking is DISABLED for this stream")
                     else:
@@ -137,6 +158,7 @@ class Player(object):
         else:
             print("ERROR: Unexpected message received")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     p = Player()
     p.play()
